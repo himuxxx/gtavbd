@@ -150,6 +150,25 @@
       .rh-text{font-size:14px;line-height:1.8;margin-top:12px}
       @keyframes rhspin{0%,100%{transform:rotate(0)}50%{transform:rotate(90deg)}}
       @media (orientation:landscape){#rotate-hint{display:none!important}}
+
+      /* MODE PICKER - PC / Mobile */
+      #mode-picker{display:none;position:absolute;inset:0;z-index:110;background:rgba(20,35,33,.72);backdrop-filter:blur(10px);place-items:center}
+      #mode-picker.show{display:grid}
+      .mp-card{background:#fff8e8;color:#38554b;padding:28px;border-radius:14px;box-shadow:0 20px 60px #163c4466;text-align:center;width:350px;max-width:90vw}
+      .mp-title{font:800 34px/1 'Barlow Condensed',Impact,sans-serif;letter-spacing:1px}
+      .mp-sub{font-size:11px;opacity:.7;margin:8px 0 18px}
+      .mp-row{display:flex;gap:12px}
+      .mp-btn{flex:1;border:0;border-radius:10px;padding:16px 8px;background:#eb7953;color:#fff8e8;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+      .mp-btn:last-child{background:#38554b}
+      .mp-ico{font-size:30px}
+      .mp-btn b{font-size:16px;letter-spacing:1px}
+      .mp-btn small{font-size:9px;opacity:.85}
+
+      /* MOBILE MODE - smaller minimap, zoom buttons up top */
+      .mode-mobile .minimap-panel{width:105px;padding:6px}
+      .mode-mobile #minimap{height:62px;margin-top:4px}
+      .mode-mobile .top-zoom{top:96px;right:auto;left:140px;flex-direction:row;gap:8px}
+      .mode-mobile .btn-zoom{width:44px;height:44px}
     </style>
   </head>
   <body>
@@ -188,6 +207,17 @@
       </div>
 
       <div id="rotate-hint"><div><div class="rh-icon">🔄</div><div class="rh-text">Phone ta ghuriye<br><b>landscape</b> koro<br>best experience er jonno</div></div></div>
+
+      <div id="mode-picker">
+        <div class="mp-card">
+          <div class="mp-title">GTA BANGLADESH</div>
+          <p class="mp-sub">Kivabe khelba?</p>
+          <div class="mp-row">
+            <button id="mode-pc-btn" class="mp-btn"><span class="mp-ico">🖥️</span><b>PC</b><small>Keyboard + Mouse</small></button>
+            <button id="mode-mobile-btn" class="mp-btn"><span class="mp-ico">📱</span><b>Mobile</b><small>Touch Control</small></button>
+          </div>
+        </div>
+      </div>
 
       <section class="minimap-panel">
         <div class="map-top">
@@ -55595,10 +55625,9 @@ const TAU = Math.PI * 2;
 const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
 const angleDiff = (a,b) => ((a-b+Math.PI)%TAU+TAU)%TAU-Math.PI;
 const policeColor = new THREE.Color(0x112233); // Dark Bangladesh Police uniform color
-const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||(navigator.maxTouchPoints>0&&Math.min(screen.width,screen.height)<820);
 
 /* ===== balance.js ===== */
-const B_DEFAULTS = {
+const B = Object.freeze({
   seed: 73129, carCount: 62, trafficCount: 26, particleCount: 220, skidCount: 900,
   pedCount: 36, bulletCount: 80, bulletSpeed: 85, bulletLifeMax: 1.4, pedSpeed: 2.6, gunCooldownTime: .18,
   pedChaseSpeed: 3.6, policeFootCount: 5, wantedDecay: 1.6,
@@ -55614,9 +55643,7 @@ const B_DEFAULTS = {
   carMass: new Float32Array([0.75, 0.85, 1.2, 1.3, 1.8, 1.9, .55]),
   carColors: [0xffffff, 0xcccccc, 0x111111, 0x880000, 0x000088, 0x556b2f, 0xc0c0c0, 0x8b4513, 0xffd700, 0x228b22],
   districtNames: ['GULSHAN', 'COX\'S BAZAR', 'MIRPUR', 'UTTARA', 'BANANI', 'DHANMONDI'],
-};
-// Phones get a lighter simulation for smooth framerates (fewer cars/peds/particles).
-const B = Object.freeze(IS_MOBILE?{...B_DEFAULTS,carCount:40,trafficCount:16,pedCount:22,particleCount:120,skidCount:450,bulletCount:60}:B_DEFAULTS);
+});
 
 function validateBalance() {
   if (B.trafficCount >= B.carCount || B.fixedDt <= 0 || B.carTopSpeed.length !== B.carNames.length) throw new Error('Invalid simulation balance');
@@ -56621,14 +56648,14 @@ function buildHeli() {
 }
 
 function createBoard(s,b) {
-  const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!IS_MOBILE,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer:true});
-  renderer.setPixelRatio(IS_MOBILE?Math.min(window.devicePixelRatio,1):Math.min(window.devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);
-  renderer.shadowMap.enabled=true;renderer.shadowMap.type=IS_MOBILE?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;
+  const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:true,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
   const scene=new THREE.Scene();scene.background=new THREE.Color(0x87CEEB);scene.fog=new THREE.Fog(0x87CEEB,150,400);
   const hemi=new THREE.HemisphereLight(0xffeedd,0xcdae82,2.0);scene.add(hemi);
   const sun=new THREE.DirectionalLight(0xfff1d8,3.5);sun.position.set(-100,82,65);sun.castShadow=true;
-  sun.shadow.mapSize.set(IS_MOBILE?1024:2048,IS_MOBILE?1024:2048);sun.shadow.camera.left=-86;sun.shadow.camera.right=86;sun.shadow.camera.top=86;sun.shadow.camera.bottom=-86;sun.shadow.camera.near=1;sun.shadow.camera.far=340;sun.shadow.bias=-.0003;sun.shadow.normalBias=.055;sun.shadow.radius=2;
+  sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-86;sun.shadow.camera.right=86;sun.shadow.camera.top=86;sun.shadow.camera.bottom=-86;sun.shadow.camera.near=1;sun.shadow.camera.far=340;sun.shadow.bias=-.0003;sun.shadow.normalBias=.055;sun.shadow.radius=2;
   scene.add(sun);scene.add(sun.target);
   const world=buildWorld(scene,s.city);
   const cars=[];for(let i=0;i<s.carCount;i++){const car=createCar(b,s.type[i],s.color[i]);scene.add(car.root);cars.push(car);}
@@ -57049,27 +57076,32 @@ function render(v,s,b,dt,now,snap=false) {
 function resetPresentation(v) {v.camInitialized=false;v.lastVehicle=-2;v.lastNearest=-2;v.lastSpeed=-1;v.lastHealth=-999;v.lastEvent=0;v.lastDistrict=-1;v.keys.fill(0);v.ui.toast.classList.remove('visible');}
 
 /* ===== main.js (bootstrap) ===== */
-/* Mobile: auto-rotate to landscape on first tap (fullscreen + orientation lock),
-   with a manual rotate hint fallback for browsers that refuse the lock (e.g. iOS). */
-(function(){
-  if(!IS_MOBILE) return;
+/* Game mode picker (PC / Mobile). Mobile mode: auto-rotate to landscape on tap
+   (fullscreen + orientation lock), with a manual rotate hint fallback for
+   browsers that refuse the lock (e.g. iOS). */
+let gameMode=null;
+function applyGameMode(mode){
+  gameMode=mode;
+  document.body.classList.add('mode-'+mode);
+  const picker=document.getElementById('mode-picker'); if(picker) picker.classList.remove('show');
+}
+function lockLandscape(){
+  const doLock=()=>{ try{ const p=screen.orientation&&screen.orientation.lock('landscape'); if(p&&p.catch)p.catch(()=>{}); }catch(e){} };
+  if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
+    try{ const r=document.documentElement.requestFullscreen(); if(r&&r.then)r.then(doLock,doLock); else doLock(); }
+    catch(e){ doLock(); }
+  } else doLock();
+}
+function updateRotateHint(){
   const hint=document.getElementById('rotate-hint');
-  const isPortrait=()=>matchMedia('(orientation: portrait)').matches;
-  const updateHint=()=>{ if(hint) hint.classList.toggle('show',isPortrait()); };
-  function lockLandscape(){
-    updateHint();
-    const doLock=()=>{ try{ const p=screen.orientation&&screen.orientation.lock('landscape'); if(p&&p.catch)p.catch(()=>{}); }catch(e){} };
-    if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
-      try{ const r=document.documentElement.requestFullscreen(); if(r&&r.then)r.then(doLock,doLock); else doLock(); }
-      catch(e){ doLock(); }
-    } else doLock();
-  }
-  window.addEventListener('touchstart',lockLandscape,{passive:true});
-  window.addEventListener('click',lockLandscape);
-  window.addEventListener('orientationchange',()=>setTimeout(updateHint,300));
-  window.addEventListener('resize',updateHint);
-  updateHint();
-})();
+  if(hint) hint.classList.toggle('show',gameMode==='mobile'&&matchMedia('(orientation: portrait)').matches);
+}
+document.getElementById('mode-pc-btn').addEventListener('click',()=>applyGameMode('pc'));
+document.getElementById('mode-mobile-btn').addEventListener('click',()=>applyGameMode('mobile'));
+window.addEventListener('touchstart',()=>{ if(gameMode==='mobile'){ updateRotateHint(); lockLandscape(); } },{passive:true});
+window.addEventListener('click',()=>{ if(gameMode==='mobile'){ updateRotateHint(); lockLandscape(); } });
+window.addEventListener('orientationchange',()=>setTimeout(updateRotateHint,300));
+window.addEventListener('resize',updateRotateHint);
 try {
   validateBalance();
   const city=makeCityData(B),state=allocateGameData(B,city);
@@ -57130,6 +57162,7 @@ try {
   render(board,state,B,1/60,performance.now()/1000,true);
   document.getElementById('loading').style.opacity='0';document.getElementById('loading').style.pointerEvents='none';
   setTimeout(()=>document.getElementById('loading').remove(),700);
+  setTimeout(()=>{ if(board.manual) applyGameMode('pc'); else document.getElementById('mode-picker').classList.add('show'); },750);
   requestAnimationFrame(frame);
 } catch(error) {
   console.error(error);document.getElementById('loading').hidden=true;
